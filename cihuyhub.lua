@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService") -- New service for input detection
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Wait until PlayerGui is ready (crucial for UI LocalScripts)
@@ -26,7 +26,7 @@ local MINIMIZE_TEXT = "CH" -- Text on the minimized icon
 
 --- Create the Main ScreenGui ---
 local cihuyHubGui = Instance.new("ScreenGui")
-cihuyHubGui.Name = "CihuyHub_V3" -- Renamed for versioning
+cihuyHubGui.Name = "CihuyHub_V4" -- Renamed for versioning
 cihuyHubGui.Parent = LocalPlayer.PlayerGui
 
 -- Apply overall UI scaling for responsiveness across devices
@@ -42,7 +42,7 @@ containerFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 containerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 containerFrame.BackgroundColor3 = MAIN_BG_COLOR
 containerFrame.BorderSizePixel = 0
-containerFrame.Parent = cihuyHubGui
+containerFrame.Parent = cihuyGui
 
 -- Add rounded corners to the main container
 local containerCorner = Instance.new("UICorner")
@@ -134,7 +134,7 @@ minimizedIconCorner.Parent = minimizedIcon
 --- Create the Sidebar (Invisible Bar for Tabs) ---
 local sidebarFrame = Instance.new("Frame")
 sidebarFrame.Name = "Sidebar"
-sidebarFrame.Size = UDim2.new(0.25, 0, 1, -40) -- 25% width, full height minus header
+sidebarFrame.Size = UDim2.new(0.25, 0, 1, -40) -- 25% width of container, full height minus header
 sidebarFrame.Position = UDim2.new(0, 0, 0, 40) -- Positioned below the header
 sidebarFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 sidebarFrame.BorderSizePixel = 0
@@ -246,7 +246,7 @@ end
 task.wait(LOADING_SCREEN_DURATION)
 hideLoadingScreen()
 
--- Initially hide the main content until loading is complete
+-- Initially ensure the main UI is visible after loading completes
 containerFrame.Visible = true
 
 --- GUI Drag Functionality ---
@@ -254,65 +254,42 @@ local isDragging = false
 local dragStartPos = Vector2.new(0, 0)
 local initialGuiPos = UDim2.new(0, 0, 0, 0)
 
-local function startDrag(inputObject)
+local function startDrag(inputObject, guiToDrag)
     isDragging = true
     dragStartPos = inputObject.Position
-    initialGuiPos = containerFrame.Position
-    UserInputService.InputChanged:Connect(onDrag)
-    UserInputService.InputEnded:Connect(endDrag)
-end
+    initialGuiPos = guiToDrag.Position
+    local connectionChanged
+    local connectionEnded
 
-local function onDrag(inputObject)
-    if isDragging then
-        local delta = inputObject.Position - dragStartPos
-        local newX = initialGuiPos.X.Scale + delta.X / cihuyHubGui.AbsoluteSize.X
-        local newY = initialGuiPos.Y.Scale + delta.Y / cihuyHubGui.AbsoluteSize.Y
-        containerFrame.Position = UDim2.new(newX, 0, newY, 0)
-    end
-end
+    connectionChanged = UserInputService.InputChanged:Connect(function(input)
+        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - dragStartPos
+            local newX = initialGuiPos.X.Scale + delta.X / cihuyHubGui.AbsoluteSize.X
+            local newY = initialGuiPos.Y.Scale + delta.Y / cihuyHubGui.AbsoluteSize.Y
+            guiToDrag.Position = UDim2.new(newX, 0, newY, 0)
+        end
+    end)
 
-local function endDrag()
-    isDragging = false
+    connectionEnded = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+            connectionChanged:Disconnect()
+            connectionEnded:Disconnect()
+        end
+    end)
 end
 
 headerBar.InputBegan:Connect(function(inputObject)
     if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
-        startDrag(inputObject)
+        startDrag(inputObject, containerFrame)
     end
 end)
-
--- Drag functionality for the minimized icon
-local isDraggingMinimized = false
-local dragStartPosMinimized = Vector2.new(0,0)
-local initialIconPos = UDim2.new(0,0,0,0)
-
-local function startDragMinimized(inputObject)
-    isDraggingMinimized = true
-    dragStartPosMinimized = inputObject.Position
-    initialIconPos = minimizedIcon.Position
-    UserInputService.InputChanged:Connect(onDragMinimized)
-    UserInputService.InputEnded:Connect(endDragMinimized)
-end
-
-local function onDragMinimized(inputObject)
-    if isDraggingMinimized then
-        local delta = inputObject.Position - dragStartPosMinimized
-        local newX = initialIconPos.X.Scale + delta.X / cihuyHubGui.AbsoluteSize.X
-        local newY = initialIconPos.Y.Scale + delta.Y / cihuyHubGui.AbsoluteSize.Y
-        minimizedIcon.Position = UDim2.new(newX, 0, newY, 0)
-    end
-end
-
-local function endDragMinimized()
-    isDraggingMinimized = false
-end
 
 minimizedIcon.InputBegan:Connect(function(inputObject)
     if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
-        startDragMinimized(inputObject)
+        startDrag(inputObject, minimizedIcon)
     end
 end)
-
 
 --- Close/Minimize and Maximize Functionality ---
 
@@ -320,28 +297,45 @@ local function minimizeGui()
     local currentPos = containerFrame.Position -- Save current position for re-opening
     
     local tweenInfoFadeOut = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    local goalFadeOut = {BackgroundTransparency = 1, BorderTransparency = 1, TextTransparency = 1}
 
-    -- Hide all children of containerFrame and the containerFrame itself
+    -- Tween the main container's transparency
+    TweenService:Create(containerFrame, tweenInfoFadeOut, {BackgroundTransparency = 1, BorderTransparency = 1}):Play()
+
+    -- Tween and hide all child elements
     for _, child in ipairs(containerFrame:GetDescendants()) do
-        if child:IsA("GuiObject") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
-            -- Tween transparency for a smoother fade out
-            TweenService:Create(child, tweenInfoFadeOut, {BackgroundTransparency = 1, TextTransparency = 1, ImageTransparency = 1}):Play()
-            -- Also set visible to false after tween for good measure
-            task.delay(0.3, function() child.Visible = false end)
+        if child:IsA("GuiObject") then -- Check if it's a GUI object
+            local properties = {}
+            if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
+                properties.BackgroundTransparency = 1
+                properties.ImageTransparency = 1
+            end
+            if child:IsA("TextLabel") or child:IsA("TextButton") then
+                properties.TextTransparency = 1
+            end
+            
+            if next(properties) then -- Only create tween if there are properties to tween
+                TweenService:Create(child, tweenInfoFadeOut, properties):Play()
+            end
+            
+            -- Set visible to false after tween finishes to truly hide them
+            task.delay(tweenInfoFadeOut.Time + 0.05, function() -- Add a small delay after tween time
+                child.Visible = false
+            end)
         end
     end
-    TweenService:Create(containerFrame, tweenInfoFadeOut, {BackgroundTransparency = 1, BorderTransparency = 1}):Play()
-    task.delay(0.3, function() containerFrame.Visible = false end)
 
-    -- Show the minimized icon at the last known position of the GUI
-    minimizedIcon.Position = currentPos -- Position the icon where the main GUI was
-    minimizedIcon.Visible = true
-    
-    -- Fade in the minimized icon
-    local tweenInfoFadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    local goalFadeIn = {BackgroundTransparency = 0, TextTransparency = 0}
-    TweenService:Create(minimizedIcon, tweenInfoFadeIn, goalFadeIn):Play()
+    -- After containerFrame's tween completes, set its visibility to false
+    task.delay(tweenInfoFadeOut.Time + 0.05, function()
+        containerFrame.Visible = false
+        -- Show the minimized icon at the last known position of the GUI
+        minimizedIcon.Position = currentPos -- Position the icon where the main GUI was
+        minimizedIcon.Visible = true
+        
+        -- Fade in the minimized icon
+        local tweenInfoFadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local goalFadeIn = {BackgroundTransparency = 0, TextTransparency = 0}
+        TweenService:Create(minimizedIcon, tweenInfoFadeIn, goalFadeIn):Play()
+    end)
 end
 
 local function maximizeGui()
@@ -351,26 +345,38 @@ local function maximizeGui()
     local tweenInfoFadeOut = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     local goalFadeOut = {BackgroundTransparency = 1, TextTransparency = 1}
     TweenService:Create(minimizedIcon, tweenInfoFadeOut, goalFadeOut):Play()
-    task.delay(0.3, function() minimizedIcon.Visible = false end) -- Hide after fade
+    
+    task.delay(tweenInfoFadeOut.Time + 0.05, function()
+        minimizedIcon.Visible = false -- Hide after fade
+        -- Show the container frame at the icon's last known position
+        containerFrame.Position = currentIconPos -- Position the main GUI where the icon was
+        containerFrame.Visible = true -- Make visible before tweening in
 
-    -- Show the container frame at the icon's last known position
-    containerFrame.Position = currentIconPos -- Position the main GUI where the icon was
-    containerFrame.Visible = true
+        local tweenInfoFadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        
+        -- Tween in the container frame itself
+        TweenService:Create(containerFrame, tweenInfoFadeIn, {BackgroundTransparency = 0, BorderTransparency = 0}):Play()
 
-    local tweenInfoFadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    local goalFadeIn = {BackgroundTransparency = 0, BorderTransparency = 0}
+        -- Show and tween all child elements
+        for _, child in ipairs(containerFrame:GetDescendants()) do
+            if child:IsA("GuiObject") then -- Check if it's a GUI object
+                child.Visible = true -- Make visible before tweening in
+                local properties = {}
+                if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
+                    properties.BackgroundTransparency = 0
+                    properties.ImageTransparency = 0
+                end
+                if child:IsA("TextLabel") or child:IsA("TextButton") then
+                    properties.TextTransparency = 0
+                end
 
-    -- Show all children of containerFrame and the containerFrame itself
-    for _, child in ipairs(containerFrame:GetDescendants()) do
-        if child:IsA("GuiObject") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
-            child.Visible = true -- Make visible before tweening in
-            -- Tween transparency for a smoother fade in
-            TweenService:Create(child, tweenInfoFadeIn, {BackgroundTransparency = 0, TextTransparency = 0, ImageTransparency = 0}):Play()
+                if next(properties) then -- Only create tween if there are properties to tween
+                    TweenService:Create(child, tweenInfoFadeIn, properties):Play()
+                end
+            end
         end
-    end
-    TweenService:Create(containerFrame, tweenInfoFadeIn, goalFadeIn):Play()
+    end)
 end
 
 closeButton.MouseButton1Click:Connect(minimizeGui)
 minimizedIcon.MouseButton1Click:Connect(maximizeGui)
-
