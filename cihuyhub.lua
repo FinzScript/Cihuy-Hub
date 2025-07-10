@@ -1,7 +1,8 @@
--- Script to create an optimized "Cihuy Hub" GUI with a modern design and loading screen
+-- Script for the optimized "Cihuy Hub" GUI with drag, close, and minimize/maximize functionality
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService") -- New service for input detection
 local LocalPlayer = Players.LocalPlayer
 
 -- Wait until PlayerGui is ready (crucial for UI LocalScripts)
@@ -13,13 +14,19 @@ local ACCENT_COLOR = Color3.fromRGB(50, 100, 200) -- Modern blue accent
 local OUTLINE_COLOR = Color3.fromRGB(25, 25, 35) -- Slightly darker outline
 local BORDER_RADIUS = 12 -- Corner radius for modern rounded edges
 local TEXT_COLOR = Color3.fromRGB(230, 230, 230) -- Light gray for text
+local HEADER_COLOR = Color3.fromRGB(45, 45, 55) -- Slightly lighter header for distinction
 
-local LOADING_SCREEN_DURATION = 2.5 -- Duration of the loading screen in seconds (slightly faster)
-local UI_SCALE_FACTOR = 0.7 -- Adjust this for overall UI size on screen (e.g., 0.7 for slightly smaller)
+local LOADING_SCREEN_DURATION = 2.5 -- Duration of the loading screen in seconds
+local UI_SCALE_FACTOR = 0.7 -- Adjust this for overall UI size on screen
+
+-- Minimize Icon specific variables
+local MINIMIZE_ICON_SIZE = UDim2.new(0, 50, 0, 50) -- Fixed size for the small icon
+local MINIMIZE_ICON_COLOR = ACCENT_COLOR -- Use accent color for the icon
+local MINIMIZE_TEXT = "CH" -- Text on the minimized icon
 
 --- Create the Main ScreenGui ---
 local cihuyHubGui = Instance.new("ScreenGui")
-cihuyHubGui.Name = "CihuyHub_V2" -- Renamed for versioning
+cihuyHubGui.Name = "CihuyHub_V3" -- Renamed for versioning
 cihuyHubGui.Parent = LocalPlayer.PlayerGui
 
 -- Apply overall UI scaling for responsiveness across devices
@@ -28,14 +35,13 @@ uiScale.Scale = UI_SCALE_FACTOR
 uiScale.Parent = cihuyHubGui
 
 --- Create the Main Container Frame ---
--- This frame will hold both the sidebar and the main content area
 local containerFrame = Instance.new("Frame")
 containerFrame.Name = "MainContainer"
 containerFrame.Size = UDim2.new(0.7, 0, 0.8, 0) -- Slightly smaller overall UI
 containerFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 containerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 containerFrame.BackgroundColor3 = MAIN_BG_COLOR
-containerFrame.BorderSizePixel = 0 -- We'll use UIStroke for borders
+containerFrame.BorderSizePixel = 0
 containerFrame.Parent = cihuyHubGui
 
 -- Add rounded corners to the main container
@@ -46,7 +52,7 @@ containerCorner.Parent = containerFrame
 -- Add a subtle inner stroke for a cleaner look
 local containerStroke = Instance.new("UIStroke")
 containerStroke.Color = OUTLINE_COLOR
-containerStroke.Transparency = 0.5 -- Slightly transparent
+containerStroke.Transparency = 0.5
 containerStroke.Thickness = 2
 containerStroke.Parent = containerFrame
 
@@ -57,12 +63,80 @@ aspectRatioConstraint.AspectType = Enum.AspectType.FitWithinMaxSize
 aspectRatioConstraint.DominantAxis = Enum.DominantAxis.Width
 aspectRatioConstraint.Parent = containerFrame
 
+--- Create the Header Bar (for dragging and close button) ---
+local headerBar = Instance.new("Frame")
+headerBar.Name = "HeaderBar"
+headerBar.Size = UDim2.new(1, 0, 0, 40) -- Full width of container, 40 pixels height
+headerBar.Position = UDim2.new(0, 0, 0, 0)
+headerBar.BackgroundColor3 = HEADER_COLOR
+headerBar.BorderSizePixel = 0
+headerBar.Parent = containerFrame
+
+-- Add rounded corners to the top of the header bar (only top-left/top-right)
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, BORDER_RADIUS)
+headerCorner.Parent = headerBar
+
+-- Title text for the header bar
+local headerTitle = Instance.new("TextLabel")
+headerTitle.Name = "Title"
+headerTitle.Size = UDim2.new(0.8, 0, 1, 0)
+headerTitle.Position = UDim2.new(0.05, 0, 0, 0) -- Slightly indented
+headerTitle.AnchorPoint = Vector2.new(0, 0)
+headerTitle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+headerTitle.BackgroundTransparency = 1
+headerTitle.TextColor3 = TEXT_COLOR
+headerTitle.TextScaled = false
+headerTitle.TextSize = 20
+headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+headerTitle.Text = "Cihuy Hub"
+headerTitle.Font = Enum.Font.RobotoMono
+headerTitle.Parent = headerBar
+
+--- Create Close Button (X) ---
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 0, 30) -- Fixed size
+closeButton.Position = UDim2.new(1, -35, 0.5, 0) -- Right side of header, centered vertically
+closeButton.AnchorPoint = Vector2.new(1, 0.5)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Red color
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextScaled = false
+closeButton.TextSize = 20
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.Parent = headerBar
+
+-- Add rounded corners to the close button
+local closeButtonCorner = Instance.new("UICorner")
+closeButtonCorner.CornerRadius = UDim.new(0, 6)
+closeButtonCorner.Parent = closeButton
+
+--- Create Minimized Icon ---
+local minimizedIcon = Instance.new("TextButton")
+minimizedIcon.Name = "MinimizedCihuyHub"
+minimizedIcon.Size = MINIMIZE_ICON_SIZE
+minimizedIcon.Position = UDim2.new(0.1, 0, 0.1, 0) -- Initial position when minimized
+minimizedIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+minimizedIcon.BackgroundColor3 = MINIMIZE_ICON_COLOR
+minimizedIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizedIcon.TextScaled = true
+minimizedIcon.Text = MINIMIZE_TEXT
+minimizedIcon.Font = Enum.Font.SourceSansBold
+minimizedIcon.Visible = false -- Initially hidden
+minimizedIcon.Parent = cihuyHubGui
+
+-- Add rounded corners to the minimized icon
+local minimizedIconCorner = Instance.new("UICorner")
+minimizedIconCorner.CornerRadius = UDim.new(0.5, 0) -- Make it circular
+minimizedIconCorner.Parent = minimizedIcon
+
 --- Create the Sidebar (Invisible Bar for Tabs) ---
 local sidebarFrame = Instance.new("Frame")
 sidebarFrame.Name = "Sidebar"
-sidebarFrame.Size = UDim2.new(0.25, 0, 1, 0) -- 25% width of container, full height
-sidebarFrame.Position = UDim2.new(0, 0, 0, 0) -- Positioned at the left edge of the container
-sidebarFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40) -- Slightly darker for distinction
+sidebarFrame.Size = UDim2.new(0.25, 0, 1, -40) -- 25% width, full height minus header
+sidebarFrame.Position = UDim2.new(0, 0, 0, 40) -- Positioned below the header
+sidebarFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 sidebarFrame.BorderSizePixel = 0
 sidebarFrame.Parent = containerFrame
 
@@ -74,21 +148,21 @@ sidebarCorner.Parent = sidebarFrame
 -- Add a separator line between sidebar and main content (visual improvement)
 local separatorLine = Instance.new("Frame")
 separatorLine.Name = "SeparatorLine"
-separatorLine.Size = UDim2.new(0, 2, 1, 0) -- 2 pixels wide, full height
-separatorLine.Position = UDim2.new(1, -2, 0, 0) -- Positioned at the right edge of the sidebar
+separatorLine.Size = UDim2.new(0, 2, 1, 0)
+separatorLine.Position = UDim2.new(1, -2, 0, 0)
 separatorLine.BackgroundColor3 = OUTLINE_COLOR
 separatorLine.Parent = sidebarFrame
 
 --- Create the Main Content Area ---
 local contentFrame = Instance.new("Frame")
 contentFrame.Name = "ContentArea"
-contentFrame.Size = UDim2.new(0.75, 0, 1, 0) -- Remaining 75% width of container, full height
-contentFrame.Position = UDim2.new(0.25, 0, 0, 0) -- Positioned right after the sidebar
-contentFrame.BackgroundColor3 = MAIN_BG_COLOR -- Same as container for seamless look
+contentFrame.Size = UDim2.new(0.75, 0, 1, -40) -- Remaining width, full height minus header
+contentFrame.Position = UDim2.new(0.25, 0, 0, 40) -- Positioned right after sidebar, below header
+contentFrame.BackgroundColor3 = MAIN_BG_COLOR
 contentFrame.BorderSizePixel = 0
 contentFrame.Parent = containerFrame
 
--- Example element in the main content area
+-- Example elements in the main content area
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "TitleLabel"
 titleLabel.Size = UDim2.new(0.8, 0, 0.2, 0)
@@ -96,9 +170,9 @@ titleLabel.Position = UDim2.new(0.5, 0, 0.15, 0)
 titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 titleLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = ACCENT_COLOR -- Using accent color for title
-titleLabel.TextScaled = false -- Don't scale, use specific font size for modern look
-titleLabel.TextSize = 32 -- Smaller, fixed text size
+titleLabel.TextColor3 = ACCENT_COLOR
+titleLabel.TextScaled = false
+titleLabel.TextSize = 32
 titleLabel.Text = "Cihuy Hub Dashboard"
 titleLabel.Font = Enum.Font.RobotoMono
 titleLabel.Parent = contentFrame
@@ -112,8 +186,8 @@ descriptionLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 descriptionLabel.BackgroundTransparency = 1
 descriptionLabel.TextColor3 = TEXT_COLOR
 descriptionLabel.TextScaled = false
-descriptionLabel.TextSize = 20 -- Smaller text size
-descriptionLabel.TextWrap = true -- Allow text to wrap
+descriptionLabel.TextSize = 20
+descriptionLabel.TextWrap = true
 descriptionLabel.TextXAlignment = Enum.TextXAlignment.Center
 descriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
 descriptionLabel.Text = "Welcome to your experimental Cihuy Hub! This is a modern and advanced UI for your scientific testing and learning."
@@ -127,7 +201,7 @@ loadingScreen.Name = "LoadingScreen"
 loadingScreen.Size = containerFrame.Size
 loadingScreen.Position = containerFrame.Position
 loadingScreen.AnchorPoint = containerFrame.AnchorPoint
-loadingScreen.BackgroundColor3 = Color3.fromRGB(20, 20, 25) -- Slightly darker than main BG
+loadingScreen.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 loadingScreen.Parent = cihuyHubGui
 
 -- Add rounded corners to the loading screen for consistency
@@ -145,23 +219,15 @@ loadingText.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 loadingText.BackgroundTransparency = 1
 loadingText.TextColor3 = TEXT_COLOR
 loadingText.TextScaled = false
-loadingText.TextSize = 24 -- Smaller fixed text size
+loadingText.TextSize = 24
 loadingText.Text = "Initializing Cihuy Hub..."
-loadingText.Font = Enum.Font.RobotoMono -- Modern font
+loadingText.Font = Enum.Font.RobotoMono
 loadingText.Parent = loadingScreen
 
 -- Function to hide the loading screen with a fade-out effect
 local function hideLoadingScreen()
-    local tweenInfo = TweenInfo.new(
-        1.2, -- Duration slightly longer for smoother fade
-        Enum.EasingStyle.Quint, -- Smoother easing style
-        Enum.EasingDirection.Out,
-        0,
-        false,
-        0
-    )
+    local tweenInfo = TweenInfo.new(1.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
-    -- Tween loading screen and text transparency
     local loadingScreenGoal = {BackgroundTransparency = 1}
     local loadingTextGoal = {TextTransparency = 1}
 
@@ -171,7 +237,6 @@ local function hideLoadingScreen()
     loadingScreenTween:Play()
     loadingTextTween:Play()
 
-    -- Connect to the Completed event to destroy the loading screen after animation
     loadingScreenTween.Completed:Connect(function()
         loadingScreen:Destroy()
     end)
@@ -182,5 +247,130 @@ task.wait(LOADING_SCREEN_DURATION)
 hideLoadingScreen()
 
 -- Initially hide the main content until loading is complete
--- (This might be redundant if loading screen covers it, but good practice)
-containerFrame.Visible = true -- Ensure the main UI is visible after loading
+containerFrame.Visible = true
+
+--- GUI Drag Functionality ---
+local isDragging = false
+local dragStartPos = Vector2.new(0, 0)
+local initialGuiPos = UDim2.new(0, 0, 0, 0)
+
+local function startDrag(inputObject)
+    isDragging = true
+    dragStartPos = inputObject.Position
+    initialGuiPos = containerFrame.Position
+    UserInputService.InputChanged:Connect(onDrag)
+    UserInputService.InputEnded:Connect(endDrag)
+end
+
+local function onDrag(inputObject)
+    if isDragging then
+        local delta = inputObject.Position - dragStartPos
+        local newX = initialGuiPos.X.Scale + delta.X / cihuyHubGui.AbsoluteSize.X
+        local newY = initialGuiPos.Y.Scale + delta.Y / cihuyHubGui.AbsoluteSize.Y
+        containerFrame.Position = UDim2.new(newX, 0, newY, 0)
+    end
+end
+
+local function endDrag()
+    isDragging = false
+end
+
+headerBar.InputBegan:Connect(function(inputObject)
+    if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+        startDrag(inputObject)
+    end
+end)
+
+-- Drag functionality for the minimized icon
+local isDraggingMinimized = false
+local dragStartPosMinimized = Vector2.new(0,0)
+local initialIconPos = UDim2.new(0,0,0,0)
+
+local function startDragMinimized(inputObject)
+    isDraggingMinimized = true
+    dragStartPosMinimized = inputObject.Position
+    initialIconPos = minimizedIcon.Position
+    UserInputService.InputChanged:Connect(onDragMinimized)
+    UserInputService.InputEnded:Connect(endDragMinimized)
+end
+
+local function onDragMinimized(inputObject)
+    if isDraggingMinimized then
+        local delta = inputObject.Position - dragStartPosMinimized
+        local newX = initialIconPos.X.Scale + delta.X / cihuyHubGui.AbsoluteSize.X
+        local newY = initialIconPos.Y.Scale + delta.Y / cihuyHubGui.AbsoluteSize.Y
+        minimizedIcon.Position = UDim2.new(newX, 0, newY, 0)
+    end
+end
+
+local function endDragMinimized()
+    isDraggingMinimized = false
+end
+
+minimizedIcon.InputBegan:Connect(function(inputObject)
+    if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+        startDragMinimized(inputObject)
+    end
+end)
+
+
+--- Close/Minimize and Maximize Functionality ---
+
+local function minimizeGui()
+    local currentPos = containerFrame.Position -- Save current position for re-opening
+    
+    local tweenInfoFadeOut = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local goalFadeOut = {BackgroundTransparency = 1, BorderTransparency = 1, TextTransparency = 1}
+
+    -- Hide all children of containerFrame and the containerFrame itself
+    for _, child in ipairs(containerFrame:GetDescendants()) do
+        if child:IsA("GuiObject") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
+            -- Tween transparency for a smoother fade out
+            TweenService:Create(child, tweenInfoFadeOut, {BackgroundTransparency = 1, TextTransparency = 1, ImageTransparency = 1}):Play()
+            -- Also set visible to false after tween for good measure
+            task.delay(0.3, function() child.Visible = false end)
+        end
+    end
+    TweenService:Create(containerFrame, tweenInfoFadeOut, {BackgroundTransparency = 1, BorderTransparency = 1}):Play()
+    task.delay(0.3, function() containerFrame.Visible = false end)
+
+    -- Show the minimized icon at the last known position of the GUI
+    minimizedIcon.Position = currentPos -- Position the icon where the main GUI was
+    minimizedIcon.Visible = true
+    
+    -- Fade in the minimized icon
+    local tweenInfoFadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local goalFadeIn = {BackgroundTransparency = 0, TextTransparency = 0}
+    TweenService:Create(minimizedIcon, tweenInfoFadeIn, goalFadeIn):Play()
+end
+
+local function maximizeGui()
+    local currentIconPos = minimizedIcon.Position -- Save current icon position
+    
+    -- Fade out the minimized icon
+    local tweenInfoFadeOut = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local goalFadeOut = {BackgroundTransparency = 1, TextTransparency = 1}
+    TweenService:Create(minimizedIcon, tweenInfoFadeOut, goalFadeOut):Play()
+    task.delay(0.3, function() minimizedIcon.Visible = false end) -- Hide after fade
+
+    -- Show the container frame at the icon's last known position
+    containerFrame.Position = currentIconPos -- Position the main GUI where the icon was
+    containerFrame.Visible = true
+
+    local tweenInfoFadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local goalFadeIn = {BackgroundTransparency = 0, BorderTransparency = 0}
+
+    -- Show all children of containerFrame and the containerFrame itself
+    for _, child in ipairs(containerFrame:GetDescendants()) do
+        if child:IsA("GuiObject") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
+            child.Visible = true -- Make visible before tweening in
+            -- Tween transparency for a smoother fade in
+            TweenService:Create(child, tweenInfoFadeIn, {BackgroundTransparency = 0, TextTransparency = 0, ImageTransparency = 0}):Play()
+        end
+    end
+    TweenService:Create(containerFrame, tweenInfoFadeIn, goalFadeIn):Play()
+end
+
+closeButton.MouseButton1Click:Connect(minimizeGui)
+minimizedIcon.MouseButton1Click:Connect(maximizeGui)
+
