@@ -1,121 +1,186 @@
--- Script to create "Cihuy Hub" GUI with a Loading Screen
+-- Script to create an optimized "Cihuy Hub" GUI with a modern design and loading screen
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
--- Wait until PlayerGui is ready (important for UI LocalScript)
+-- Wait until PlayerGui is ready (crucial for UI LocalScripts)
 repeat task.wait() until LocalPlayer.PlayerGui
 
--- Variables for the main ScreenGui
-local screenGuiName = "Cihuy Hub"
-local mainBackgroundColor = Color3.fromRGB(40, 40, 40) -- Dark gray
-local outlineColor = Color3.fromRGB(0, 0, 100) -- Dark blue
-local outlineThickness = 3 -- Outline thickness
+-- UI Configuration Variables
+local MAIN_BG_COLOR = Color3.fromRGB(35, 35, 45) -- Dark bluish-gray for modern look
+local ACCENT_COLOR = Color3.fromRGB(50, 100, 200) -- Modern blue accent
+local OUTLINE_COLOR = Color3.fromRGB(25, 25, 35) -- Slightly darker outline
+local BORDER_RADIUS = 12 -- Corner radius for modern rounded edges
+local TEXT_COLOR = Color3.fromRGB(230, 230, 230) -- Light gray for text
 
--- Variables for the loading screen
-local loadingScreenDuration = 3 -- Duration of the loading screen in seconds
+local LOADING_SCREEN_DURATION = 2.5 -- Duration of the loading screen in seconds (slightly faster)
+local UI_SCALE_FACTOR = 0.7 -- Adjust this for overall UI size on screen (e.g., 0.7 for slightly smaller)
 
---- Create the ScreenGui ---
+--- Create the Main ScreenGui ---
 local cihuyHubGui = Instance.new("ScreenGui")
-cihuyHubGui.Name = screenGuiName
+cihuyHubGui.Name = "CihuyHub_V2" -- Renamed for versioning
 cihuyHubGui.Parent = LocalPlayer.PlayerGui
 
--- Ensure UI scales consistently across devices
--- UIScale will scale all elements within this ScreenGui
+-- Apply overall UI scaling for responsiveness across devices
 local uiScale = Instance.new("UIScale")
-uiScale.Scale = 0.8 -- Adjust this value as needed, 0.8 is usually a good starting size
+uiScale.Scale = UI_SCALE_FACTOR
 uiScale.Parent = cihuyHubGui
 
---- Create the Main Background Frame ---
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainBackground"
-mainFrame.Size = UDim2.new(0.6, 0, 0.7, 0) -- Size: 60% width, 70% height of screen
-mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0) -- Center of the screen
-mainFrame.AnchorPoint = Vector2.new(0.5, 0.5) -- Set anchor point to the center for true centering
-mainFrame.BackgroundColor3 = mainBackgroundColor
-mainFrame.BorderSizePixel = outlineThickness -- Add outline thickness
-mainFrame.BorderColor3 = outlineColor -- Outline color
-mainFrame.Parent = cihuyHubGui
+--- Create the Main Container Frame ---
+-- This frame will hold both the sidebar and the main content area
+local containerFrame = Instance.new("Frame")
+containerFrame.Name = "MainContainer"
+containerFrame.Size = UDim2.new(0.7, 0, 0.8, 0) -- Slightly smaller overall UI
+containerFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+containerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+containerFrame.BackgroundColor3 = MAIN_BG_COLOR
+containerFrame.BorderSizePixel = 0 -- We'll use UIStroke for borders
+containerFrame.Parent = cihuyHubGui
 
--- Add a UIAspectRatioConstraint to keep the Frame proportional on various screen sizes
+-- Add rounded corners to the main container
+local containerCorner = Instance.new("UICorner")
+containerCorner.CornerRadius = UDim.new(0, BORDER_RADIUS)
+containerCorner.Parent = containerFrame
+
+-- Add a subtle inner stroke for a cleaner look
+local containerStroke = Instance.new("UIStroke")
+containerStroke.Color = OUTLINE_COLOR
+containerStroke.Transparency = 0.5 -- Slightly transparent
+containerStroke.Thickness = 2
+containerStroke.Parent = containerFrame
+
+-- Maintain aspect ratio for the main container
 local aspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
-aspectRatioConstraint.AspectRatio = mainFrame.AbsoluteSize.X / mainFrame.AbsoluteSize.Y -- Set ratio based on initial frame size
-aspectRatioConstraint.AspectType = Enum.AspectType.FitWithinMaxSize -- Adjust to fit within max size
-aspectRatioConstraint.DominantAxis = Enum.DominantAxis.Width -- Prioritize width
-aspectRatioConstraint.Parent = mainFrame
+aspectRatioConstraint.AspectRatio = containerFrame.AbsoluteSize.X / containerFrame.AbsoluteSize.Y
+aspectRatioConstraint.AspectType = Enum.AspectType.FitWithinMaxSize
+aspectRatioConstraint.DominantAxis = Enum.DominantAxis.Width
+aspectRatioConstraint.Parent = containerFrame
 
---- Create the Loading Screen ---
+--- Create the Sidebar (Invisible Bar for Tabs) ---
+local sidebarFrame = Instance.new("Frame")
+sidebarFrame.Name = "Sidebar"
+sidebarFrame.Size = UDim2.new(0.25, 0, 1, 0) -- 25% width of container, full height
+sidebarFrame.Position = UDim2.new(0, 0, 0, 0) -- Positioned at the left edge of the container
+sidebarFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40) -- Slightly darker for distinction
+sidebarFrame.BorderSizePixel = 0
+sidebarFrame.Parent = containerFrame
+
+-- Add rounded corners to the sidebar (only left side if desired, or all)
+local sidebarCorner = Instance.new("UICorner")
+sidebarCorner.CornerRadius = UDim.new(0, BORDER_RADIUS)
+sidebarCorner.Parent = sidebarFrame
+
+-- Add a separator line between sidebar and main content (visual improvement)
+local separatorLine = Instance.new("Frame")
+separatorLine.Name = "SeparatorLine"
+separatorLine.Size = UDim2.new(0, 2, 1, 0) -- 2 pixels wide, full height
+separatorLine.Position = UDim2.new(1, -2, 0, 0) -- Positioned at the right edge of the sidebar
+separatorLine.BackgroundColor3 = OUTLINE_COLOR
+separatorLine.Parent = sidebarFrame
+
+--- Create the Main Content Area ---
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentArea"
+contentFrame.Size = UDim2.new(0.75, 0, 1, 0) -- Remaining 75% width of container, full height
+contentFrame.Position = UDim2.new(0.25, 0, 0, 0) -- Positioned right after the sidebar
+contentFrame.BackgroundColor3 = MAIN_BG_COLOR -- Same as container for seamless look
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = containerFrame
+
+-- Example element in the main content area
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(0.8, 0, 0.2, 0)
+titleLabel.Position = UDim2.new(0.5, 0, 0.15, 0)
+titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+titleLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = ACCENT_COLOR -- Using accent color for title
+titleLabel.TextScaled = false -- Don't scale, use specific font size for modern look
+titleLabel.TextSize = 32 -- Smaller, fixed text size
+titleLabel.Text = "Cihuy Hub Dashboard"
+titleLabel.Font = Enum.Font.RobotoMono
+titleLabel.Parent = contentFrame
+
+local descriptionLabel = Instance.new("TextLabel")
+descriptionLabel.Name = "DescriptionLabel"
+descriptionLabel.Size = UDim2.new(0.8, 0, 0.4, 0)
+descriptionLabel.Position = UDim2.new(0.5, 0, 0.6, 0)
+descriptionLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+descriptionLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+descriptionLabel.BackgroundTransparency = 1
+descriptionLabel.TextColor3 = TEXT_COLOR
+descriptionLabel.TextScaled = false
+descriptionLabel.TextSize = 20 -- Smaller text size
+descriptionLabel.TextWrap = true -- Allow text to wrap
+descriptionLabel.TextXAlignment = Enum.TextXAlignment.Center
+descriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+descriptionLabel.Text = "Welcome to your experimental Cihuy Hub! This is a modern and advanced UI for your scientific testing and learning."
+descriptionLabel.Font = Enum.Font.SourceSans
+descriptionLabel.Parent = contentFrame
+
+--- Create and Animate Loading Screen ---
 local loadingScreen = Instance.new("Frame")
 loadingScreen.Name = "LoadingScreen"
-loadingScreen.Size = UDim2.new(1, 0, 1, 0) -- Cover the entire ScreenGui
-loadingScreen.Position = UDim2.new(0, 0, 0, 0)
-loadingScreen.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Dark color for loading
-loadingScreen.Parent = cihuyHubGui -- Important: LoadingScreen parented to ScreenGui to cover everything
+-- Size and position exactly like the main container for a smooth transition
+loadingScreen.Size = containerFrame.Size
+loadingScreen.Position = containerFrame.Position
+loadingScreen.AnchorPoint = containerFrame.AnchorPoint
+loadingScreen.BackgroundColor3 = Color3.fromRGB(20, 20, 25) -- Slightly darker than main BG
+loadingScreen.Parent = cihuyHubGui
 
--- Text for the loading screen
+-- Add rounded corners to the loading screen for consistency
+local loadingCorner = Instance.new("UICorner")
+loadingCorner.CornerRadius = UDim.new(0, BORDER_RADIUS)
+loadingCorner.Parent = loadingScreen
+
+-- Loading text (smaller, modern font)
 local loadingText = Instance.new("TextLabel")
 loadingText.Name = "LoadingText"
 loadingText.Size = UDim2.new(0.8, 0, 0.2, 0)
 loadingText.Position = UDim2.new(0.5, 0, 0.5, 0)
 loadingText.AnchorPoint = Vector2.new(0.5, 0.5)
 loadingText.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-loadingText.BackgroundTransparency = 1 -- Transparent so only text is visible
-loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
-loadingText.TextScaled = true
-loadingText.Text = "Loading Cihuy Hub..."
-loadingText.Font = Enum.Font.SourceSansBold
+loadingText.BackgroundTransparency = 1
+loadingText.TextColor3 = TEXT_COLOR
+loadingText.TextScaled = false
+loadingText.TextSize = 24 -- Smaller fixed text size
+loadingText.Text = "Initializing Cihuy Hub..."
+loadingText.Font = Enum.Font.RobotoMono -- Modern font
 loadingText.Parent = loadingScreen
 
---- Loading Screen Animation ---
-
--- Function to hide the loading screen
+-- Function to hide the loading screen with a fade-out effect
 local function hideLoadingScreen()
     local tweenInfo = TweenInfo.new(
-        1, -- Tween duration (1 second)
-        Enum.EasingStyle.Quad, -- Easing style
-        Enum.EasingDirection.Out, -- Easing direction
-        0, -- Number of repeats
-        false, -- Reverse on repeat
-        0 -- Initial delay
+        1.2, -- Duration slightly longer for smoother fade
+        Enum.EasingStyle.Quint, -- Smoother easing style
+        Enum.EasingDirection.Out,
+        0,
+        false,
+        0
     )
 
-    -- Properties to tween (transparency of loading screen)
-    local goal = {BackgroundTransparency = 1}
-    local tween = TweenService:Create(loadingScreen, tweenInfo, goal)
+    -- Tween loading screen and text transparency
+    local loadingScreenGoal = {BackgroundTransparency = 1}
+    local loadingTextGoal = {TextTransparency = 1}
 
-    -- Also tween the loading text transparency
-    local textGoal = {TextTransparency = 1}
-    local textTween = TweenService:Create(loadingText, tweenInfo, textGoal)
+    local loadingScreenTween = TweenService:Create(loadingScreen, tweenInfo, loadingScreenGoal)
+    local loadingTextTween = TweenService:Create(loadingText, tweenInfo, loadingTextGoal)
 
-    tween:Play()
-    textTween:Play()
+    loadingScreenTween:Play()
+    loadingTextTween:Play()
 
-    -- Wait for the tween to complete, then destroy the loading screen
-    tween.Completed:Connect(function()
-        loadingScreen:Destroy() -- Destroy the loading screen after animation completes
+    -- Connect to the Completed event to destroy the loading screen after animation
+    loadingScreenTween.Completed:Connect(function()
+        loadingScreen:Destroy()
     end)
 end
 
--- Wait for a few seconds, then call the function to hide the loading screen
-task.wait(loadingScreenDuration)
+-- Wait for the specified duration, then hide the loading screen
+task.wait(LOADING_SCREEN_DURATION)
 hideLoadingScreen()
 
--- You can add other UI elements inside mainFrame here
--- For example, buttons, labels, etc.
-local welcomeLabel = Instance.new("TextLabel")
-welcomeLabel.Name = "WelcomeLabel"
-welcomeLabel.Size = UDim2.new(0.8, 0, 0.2, 0) -- 80% width of main frame, 20% height of main frame
-welcomeLabel.Position = UDim2.new(0.5, 0, 0.2, 0)
-welcomeLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-welcomeLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-welcomeLabel.BackgroundTransparency = 1
-welcomeLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Bright yellow color
-welcomeLabel.TextScaled = true
-welcomeLabel.Text = "Welcome to Cihuy Hub!"
-welcomeLabel.Font = Enum.Font.FredokaOne
-welcomeLabel.Parent = mainFrame -- Important: This is parented to mainFrame, not ScreenGui
-
--- Ensure mainFrame is visible after the loading screen is gone
--- This ensures mainFrame isn't initially obscured if the loading screen is on top
-mainFrame.Visible = true
+-- Initially hide the main content until loading is complete
+-- (This might be redundant if loading screen covers it, but good practice)
+containerFrame.Visible = true -- Ensure the main UI is visible after loading
